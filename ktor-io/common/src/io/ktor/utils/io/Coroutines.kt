@@ -43,32 +43,6 @@ fun CoroutineScope.reader(
     block: suspend ReaderScope.() -> Unit
 ): ReaderJob = launchChannel(coroutineContext, ByteChannel(autoFlush), attachJob = true, block = block)
 
-@Deprecated("Use scope.reader instead")
-fun reader(
-    coroutineContext: CoroutineContext,
-    channel: ByteChannel,
-    parent: Job? = null,
-    block: suspend ReaderScope.() -> Unit
-): ReaderJob {
-    val newContext = if (parent != null) GlobalScope.newCoroutineContext(coroutineContext + parent)
-    else GlobalScope.newCoroutineContext(coroutineContext)
-
-    return CoroutineScope(newContext).reader(EmptyCoroutineContext, channel, block)
-}
-
-@Suppress("DEPRECATION")
-@Deprecated("Use scope.reader instead")
-fun reader(
-    coroutineContext: CoroutineContext,
-    autoFlush: Boolean = false, parent: Job? = null,
-    block: suspend ReaderScope.() -> Unit
-): ReaderJob {
-    val channel = ByteChannel(autoFlush)
-    return reader(coroutineContext, channel, parent, block).also {
-        channel.attachJob(it)
-    }
-}
-
 fun CoroutineScope.writer(
     coroutineContext: CoroutineContext = EmptyCoroutineContext,
     channel: ByteChannel,
@@ -81,31 +55,6 @@ fun CoroutineScope.writer(
     block: suspend WriterScope.() -> Unit
 ): WriterJob = launchChannel(coroutineContext, ByteChannel(autoFlush), attachJob = true, block = block)
 
-@Deprecated("Use scope.writer instead")
-fun writer(
-    coroutineContext: CoroutineContext,
-    channel: ByteChannel, parent: Job? = null,
-    block: suspend WriterScope.() -> Unit
-): WriterJob {
-    val newContext = if (parent != null) GlobalScope.newCoroutineContext(coroutineContext + parent)
-    else GlobalScope.newCoroutineContext(coroutineContext)
-
-    return CoroutineScope(newContext).writer(EmptyCoroutineContext, channel, block)
-}
-
-@Suppress("DEPRECATION")
-@Deprecated("Use scope.writer instead")
-fun writer(
-    coroutineContext: CoroutineContext,
-    autoFlush: Boolean = false, parent: Job? = null,
-    block: suspend WriterScope.() -> Unit
-): WriterJob {
-    val channel = ByteChannel(autoFlush)
-    return writer(coroutineContext, channel, parent, block).also {
-        channel.attachJob(it)
-    }
-}
-
 /**
  * @param S not exactly safe (unchecked cast is used) so should be [ReaderScope] or [WriterScope]
  */
@@ -115,13 +64,24 @@ private fun <S : CoroutineScope> CoroutineScope.launchChannel(
     attachJob: Boolean,
     block: suspend S.() -> Unit
 ): ChannelJob {
-
+    val originJob = coroutineContext[Job]
     val job = launch(context) {
         if (attachJob) {
-            channel.attachJob(coroutineContext[Job]!!)
+            channel.attachJob(originJob!!)
         }
+
         @Suppress("UNCHECKED_CAST")
-        block(ChannelScope(this, channel) as S)
+        val scope = ChannelScope(this, channel) as S
+
+        try {
+            block(scope)
+        } catch (cause: Throwable) {
+            if (originJob != null) {
+                throw cause
+            } else {
+                channel.cancel(cause)
+            }
+        }
     }
 
     job.invokeOnCompletion { cause ->
