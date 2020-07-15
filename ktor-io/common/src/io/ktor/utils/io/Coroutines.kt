@@ -66,8 +66,8 @@ private fun <S : CoroutineScope> CoroutineScope.launchChannel(
 ): ChannelJob {
     val originJob = coroutineContext[Job]
     val job = launch(context) {
-        if (attachJob) {
-            channel.attachJob(originJob!!)
+        if (attachJob && originJob != null) {
+            channel.attachJob(originJob)
         }
 
         @Suppress("UNCHECKED_CAST")
