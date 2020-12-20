@@ -51,4 +51,15 @@ class Base64 {
             assertEquals(text, encodedText.decodeBase64String())
         }
     }
+
+    @Test
+    fun base64UrlTest() {
+        val text = "<<???>>"
+        val encodedURL = "PDw_Pz8-Pg"
+        val encodedStandard = "PDw/Pz8+Pg=="
+
+        assertEquals(encodedStandard, text.encodeBase64(), "Sanity check failed")
+        assertEquals(encodedURL, text.encodeBase64Url())
+        assertEquals(text, encodedURL.decodeBase64UrlString())
+    }
 }
