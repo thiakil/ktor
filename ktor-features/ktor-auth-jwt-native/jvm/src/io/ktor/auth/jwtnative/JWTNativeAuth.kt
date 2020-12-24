@@ -7,9 +7,11 @@ package io.ktor.auth.jwtnative
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.auth.*
+import io.ktor.jwt.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.util.pipeline.*
+import kotlinx.serialization.json.*
 import org.slf4j.*
 
 private val JWTAuthKey: Any = "JWTNativeAuth"
@@ -34,7 +36,7 @@ public class JWTNativeAuthenticationProvider internal constructor(config: Config
             { call -> call.request.parseAuthorizationHeaderOrNull() }
 
         internal var authenticationFunction: AuthenticationFunction<DecodedJWT> = { credentials ->
-            credentials.payload
+            JwtPrincipal(credentials.payload)
         }
 
         internal var challenge: JWTAuthChallengeFunction = { scheme, realm ->
@@ -145,6 +147,10 @@ public fun Authentication.Configuration.jwtNative(
         }
     }
     register(provider)
+}
+
+public data class JwtPrincipal(public val claims: IJWTClaimsSet, public val extraClaims: Map<String, JsonElement> = emptyMap()): Principal, IJWTClaimsSet by claims {
+    public constructor(payload: JWTPayload): this(payload.claimsSet, payload.unknownClaims)
 }
 
 private fun ApplicationRequest.parseAuthorizationHeaderOrNull() = try {

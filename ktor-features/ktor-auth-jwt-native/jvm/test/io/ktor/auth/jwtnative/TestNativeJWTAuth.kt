@@ -8,9 +8,10 @@ import com.nhaarman.mockito_kotlin.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.Principal
-import io.ktor.auth.jwtnative.algorithms.*
+import io.ktor.jwt.algorithms.*
 import io.ktor.http.*
 import io.ktor.http.auth.*
+import io.ktor.jwt.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.testing.*
@@ -25,7 +26,7 @@ class JWTAuthTest {
     @Test
     fun testJwtNoAuth() {
         withApplication {
-            application.configureServerjwtNative()
+            application.configureServerJwtNative()
 
             val response = handleRequest {
                 uri = "/"
@@ -38,7 +39,7 @@ class JWTAuthTest {
     @Test
     fun testJwtNoAuthCustomChallengeNoToken() {
         withApplication {
-            application.configureServerjwtNative {
+            application.configureServerJwtNative {
                 challenge { _, _ ->
                     call.respond(UnauthorizedResponse(HttpAuthHeader.basicAuthChallenge("custom1", Charsets.UTF_8)))
                 }
@@ -56,7 +57,7 @@ class JWTAuthTest {
     @Test
     fun testJwtMultipleNoAuthCustomChallengeNoToken() {
         withApplication {
-            application.configureServerjwtNative {
+            application.configureServerJwtNative {
                 challenge { _, _ ->
                     call.respond(UnauthorizedResponse(HttpAuthHeader.basicAuthChallenge("custom1", Charsets.UTF_8)))
                 }
@@ -102,7 +103,7 @@ class JWTAuthTest {
             application.routing {
                 authenticate("first", "second") {
                     get("/") {
-                        val principal = call.authentication.principal<JWTPayload>()!!
+                        val principal = call.authentication.principal<JwtPrincipal>()!!
                         call.respondText("Secret info, ${principal.audience}")
                     }
                 }
@@ -118,7 +119,7 @@ class JWTAuthTest {
             }
             assertEquals(setOf("1", "2"), validated)
 
-            currentPrincipal = { it.payload }
+            currentPrincipal = { JwtPrincipal(it.payload) }
             validated.clear()
 
             handleRequestWithToken(token).let { call ->
@@ -139,7 +140,7 @@ class JWTAuthTest {
     @Test
     fun testJwtSuccess() {
         withApplication {
-            application.configureServerjwtNative()
+            application.configureServerJwtNative()
 
             val token = getToken()
             println(token)
@@ -155,7 +156,7 @@ class JWTAuthTest {
     @Test
     fun testJwtSuccessWithCustomScheme() {
         withApplication {
-            application.configureServerjwtNative {
+            application.configureServerJwtNative {
                 authSchemes("Bearer", "Token")
             }
 
@@ -172,7 +173,7 @@ class JWTAuthTest {
     @Test
     fun testJwtSuccessWithCustomSchemeWithDifferentCases() {
         withApplication {
-            application.configureServerjwtNative {
+            application.configureServerJwtNative {
                 authSchemes("Bearer", "tokEN")
             }
 
@@ -189,7 +190,7 @@ class JWTAuthTest {
     @Test
     fun testJwtAlgorithmMismatch() {
         withApplication {
-            application.configureServerjwtNative()
+            application.configureServerJwtNative()
             val token = runBlocking {
                 JWS.sign(makeJWT {
                     singleAudience = this@JWTAuthTest.audience
@@ -204,7 +205,7 @@ class JWTAuthTest {
     @Test
     fun testJwtAudienceMismatch() {
         withApplication {
-            application.configureServerjwtNative()
+            application.configureServerJwtNative()
             val token = signJwt {
                 singleAudience = "wrong"
                 issuer = this@JWTAuthTest.issuer
@@ -217,7 +218,7 @@ class JWTAuthTest {
     @Test
     fun testJwtIssuerMismatch() {
         withApplication {
-            application.configureServerjwtNative()
+            application.configureServerJwtNative()
             //val token = JWT.create().withAudience(audience).withIssuer("wrong").sign(algorithm)
             val token = signJwt {
                 singleAudience = this@JWTAuthTest.audience
@@ -274,7 +275,7 @@ class JWTAuthTest {
     @Test
     fun testJwtAuthSchemeMismatch() {
         withApplication {
-            application.configureServerjwtNative()
+            application.configureServerJwtNative()
             val token = getToken().removePrefix("Bearer ")
             val response = handleRequestWithToken(token)
             verifyResponseUnauthorized(response)
@@ -284,7 +285,7 @@ class JWTAuthTest {
     @Test
     fun testJwtAuthSchemeMismatch2() {
         withApplication {
-            application.configureServerjwtNative()
+            application.configureServerJwtNative()
             val token = getToken("Token")
             val response = handleRequestWithToken(token)
             verifyResponseUnauthorized(response)
@@ -294,7 +295,7 @@ class JWTAuthTest {
     @Test
     fun testJwtAuthSchemeMistake() {
         withApplication {
-            application.configureServerjwtNative()
+            application.configureServerJwtNative()
             val token = getToken().replace("Bearer", "Bearer:")
             val response = handleRequestWithToken(token)
             verifyResponseBadRequest(response)
@@ -304,7 +305,7 @@ class JWTAuthTest {
     @Test
     fun testJwtBlobPatternMismatch() {
         withApplication {
-            application.configureServerjwtNative()
+            application.configureServerJwtNative()
             val token = getToken().let {
                 val i = it.length - 2
                 it.replaceRange(i..i + 1, " ")
@@ -466,7 +467,7 @@ class JWTAuthTest {
         }
     }
 
-    private fun Application.configureServerjwtNative(extra: JWTNativeAuthenticationProvider.Configuration.() -> Unit = {}) = configureServer {
+    private fun Application.configureServerJwtNative(extra: JWTNativeAuthenticationProvider.Configuration.() -> Unit = {}) = configureServer {
         jwtNative {
             this@jwtNative.realm = this@JWTAuthTest.realm
             keyProvider(getJwkProviderMock())
@@ -482,7 +483,7 @@ class JWTAuthTest {
         routing {
             authenticate {
                 get("/") {
-                    val principal = call.authentication.principal<JWTPayload>()!!
+                    val principal = call.authentication.principal<JwtPrincipal>()!!
                     call.respondText("Secret info from ${principal.issuer}")
                 }
             }
@@ -524,7 +525,8 @@ class JWTAuthTest {
     }
 
     private fun getJwkToken(prefix: Boolean = true) = (if (prefix) "Bearer " else "") + runBlocking {
-        JWS.sign(JWTPayload(
+        JWS.sign(
+            JWTPayload(
             JWTClaimsSet(
                 audience = listOf(audience),
                 issuer = issuer
@@ -533,7 +535,8 @@ class JWTAuthTest {
     }
 
     private fun getToken(scheme: String = "Bearer") = "$scheme " + runBlocking {
-        JWS.sign(JWTPayload(
+        JWS.sign(
+            JWTPayload(
             JWTClaimsSet(
                 audience = listOf(audience),
                 issuer = issuer
