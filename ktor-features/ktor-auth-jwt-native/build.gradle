@@ -1,0 +1,16 @@
+plugins {
+    id 'org.jetbrains.kotlin.plugin.serialization'
+}
+
+description = ''
+
+kotlin.sourceSets {
+	jvmMain.dependencies {
+        api project(':ktor-features:ktor-auth')
+        api("org.jetbrains.kotlinx:kotlinx-serialization-json:$serialization_version")
+    }
+    jvmTest.dependencies {
+        api 'com.nhaarman:mockito-kotlin:1.6.0'
+    }
+}
+
