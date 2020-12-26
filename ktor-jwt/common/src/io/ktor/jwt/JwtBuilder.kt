@@ -72,7 +72,7 @@ public class JwtBuilder: IJWTClaimsSet {
     @JwtDSL
     override var phoneNumberVerified: Boolean? = null
     @JwtDSL
-    override var address: JWTClaimsSet.Address? = null
+    override var address: IJWTClaimsSet.Address? = null
     @JwtDSL
     override var updatedAt: GMTDate? = null
     @JwtDSL
