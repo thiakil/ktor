@@ -297,14 +297,7 @@ public sealed class JsonWebKey: SigningKey {
             if (this === other) return true
             if (other !is EllipticCurve) return false
 
-            if (use != other.use) return false
-            if (keyOperations != other.keyOperations) return false
-            if (algorithm != other.algorithm) return false
-            if (keyId != other.keyId) return false
-            if (x509Url != other.x509Url) return false
-            if (x509CertificateChain != other.x509CertificateChain) return false
-            if (x509CertificateSha1Thumbprint != other.x509CertificateSha1Thumbprint) return false
-            if (x509CertificateSha256Thumbprint != other.x509CertificateSha256Thumbprint) return false
+            if (!super.equals(other)) return false
             if (curve != other.curve) return false
             if (!x.contentEquals(other.x)) return false
             if (!y.contentEquals(other.y)) return false
@@ -317,14 +310,7 @@ public sealed class JsonWebKey: SigningKey {
         }
 
         override fun hashCode(): Int {
-            var result = use?.hashCode() ?: 0
-            result = 31 * result + (keyOperations?.hashCode() ?: 0)
-            result = 31 * result + (algorithm?.hashCode() ?: 0)
-            result = 31 * result + (keyId?.hashCode() ?: 0)
-            result = 31 * result + (x509Url?.hashCode() ?: 0)
-            result = 31 * result + (x509CertificateChain?.hashCode() ?: 0)
-            result = 31 * result + (x509CertificateSha1Thumbprint?.hashCode() ?: 0)
-            result = 31 * result + (x509CertificateSha256Thumbprint?.hashCode() ?: 0)
+            var result = super.hashCode()
             result = 31 * result + curve.hashCode()
             result = 31 * result + x.contentHashCode()
             result = 31 * result + y.contentHashCode()
@@ -500,31 +486,45 @@ public sealed class JsonWebKey: SigningKey {
             if (this === other) return true
             if (other !is Symmetric) return false
 
-            if (use != other.use) return false
-            if (keyOperations != other.keyOperations) return false
-            if (algorithm != other.algorithm) return false
-            if (keyId != other.keyId) return false
-            if (x509Url != other.x509Url) return false
-            if (x509CertificateChain != other.x509CertificateChain) return false
-            if (x509CertificateSha1Thumbprint != other.x509CertificateSha1Thumbprint) return false
-            if (x509CertificateSha256Thumbprint != other.x509CertificateSha256Thumbprint) return false
+            if (!super.equals(other)) return false
             if (!keyValue.contentEquals(other.keyValue)) return false
 
             return true
         }
 
         override fun hashCode(): Int {
-            var result = use?.hashCode() ?: 0
-            result = 31 * result + (keyOperations?.hashCode() ?: 0)
-            result = 31 * result + (algorithm?.hashCode() ?: 0)
-            result = 31 * result + (keyId?.hashCode() ?: 0)
-            result = 31 * result + (x509Url?.hashCode() ?: 0)
-            result = 31 * result + (x509CertificateChain?.hashCode() ?: 0)
-            result = 31 * result + (x509CertificateSha1Thumbprint?.hashCode() ?: 0)
-            result = 31 * result + (x509CertificateSha256Thumbprint?.hashCode() ?: 0)
+            var result = super.hashCode()
             result = 31 * result + keyValue.contentHashCode()
             return result
         }
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is JsonWebKey) return false
+
+        if (use != other.use) return false
+        if (keyOperations != other.keyOperations) return false
+        if (algorithm != other.algorithm) return false
+        if (keyId != other.keyId) return false
+        if (x509Url != other.x509Url) return false
+        if (x509CertificateChain != other.x509CertificateChain) return false
+        if (x509CertificateSha1Thumbprint != other.x509CertificateSha1Thumbprint) return false
+        if (x509CertificateSha256Thumbprint != other.x509CertificateSha256Thumbprint) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = use?.hashCode() ?: 0
+        result = 31 * result + (keyOperations?.hashCode() ?: 0)
+        result = 31 * result + (algorithm?.hashCode() ?: 0)
+        result = 31 * result + (keyId?.hashCode() ?: 0)
+        result = 31 * result + (x509Url?.hashCode() ?: 0)
+        result = 31 * result + (x509CertificateChain?.hashCode() ?: 0)
+        result = 31 * result + (x509CertificateSha1Thumbprint?.hashCode() ?: 0)
+        result = 31 * result + (x509CertificateSha256Thumbprint?.hashCode() ?: 0)
+        return result
     }
 
     public companion object {
