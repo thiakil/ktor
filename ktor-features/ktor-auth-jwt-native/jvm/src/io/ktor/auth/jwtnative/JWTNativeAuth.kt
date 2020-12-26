@@ -150,7 +150,7 @@ public fun Authentication.Configuration.jwtNative(
     register(provider)
 }
 
-public data class JwtPrincipal(public val claims: IJWTClaimsSet, public val extraClaims: Map<String, JsonElement> = emptyMap()): Principal, IJWTClaimsSet by claims {
+public data class JwtPrincipal(public val claims: JWTClaimsSet, public val extraClaims: Map<String, JsonElement> = emptyMap()): Principal, JWTClaimsSet by claims {
     public constructor(payload: JWTPayload): this(payload.claimsSet, payload.unknownClaims)
 }
 

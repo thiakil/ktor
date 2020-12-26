@@ -10,8 +10,7 @@ import kotlinx.serialization.*
  * A JOSE Header is a JSON object containing the parameters describing the cryptographic operations and parameters
  * employed.  The JOSE (JSON Object Signing and Encryption) Header is comprised of a set of Header Parameters.
  */
-@Serializable
-public data class JOSEHeader(
+public interface JOSEHeader {
     /**
      * The "typ" (type) Header Parameter is used by JWS applications to declare the
      * [media type](http://www.iana.org/assignments/media-types) of this complete JWS. This is intended for use by the
@@ -22,7 +21,7 @@ public data class JOSEHeader(
      * application.
      */
     @SerialName("typ")
-    public val type: String? = null,
+    public val type: String?
 
     /**
      * The "alg" (algorithm) Header Parameter identifies the cryptographic algorithm used to secure the JWS.
@@ -34,7 +33,7 @@ public data class JOSEHeader(
      * present and MUST be understood and processed by implementations.
      */
     @SerialName("alg")
-    public val algorithm: String,
+    public val algorithm: String
 
     /**
      * The "jku" (JWK Set URL) Header Parameter is a URI (RFC3986) that refers to a resource for a set of JSON-encoded
@@ -44,14 +43,14 @@ public data class JOSEHeader(
      * as per Section 6 of RFC 6125.
      */
     @SerialName("jku")
-    public val jwkSetUrl: String? = null,
+    public val jwkSetUrl: String?
 
     /**
      * The "jwk" (JSON Web Key) Header Parameter is the public key that corresponds to the key used to digitally sign
      * the JWS. This key is represented as a JSON Web Key.
      */
     @SerialName("jwk")
-    public val jsonWebKey: JsonWebKey? = null,
+    public val jsonWebKey: JsonWebKey?
 
     /**
      * The "kid" (key ID) Header Parameter is a hint indicating which key was used to secure the JWS.
@@ -61,7 +60,7 @@ public data class JOSEHeader(
      * When used with a JWK, the "kid" value is used to match a JWK "kid" parameter value.
      */
     @SerialName("kid")
-    public val keyId: String? = null,
+    public val keyId: String?
 
     /**
      * The "x5u" (X.509 URL) Header Parameter is a URI that refers to a resource for the X.509 public key certificate or
@@ -74,7 +73,7 @@ public data class JOSEHeader(
      * certificate MUST use TLS; and the identity of the server MUST be validated, as per Section 6 of RFC 6125.
      */
     @SerialName("x5u")
-    public val x509Url: String? = null,
+    public val x509Url: String?
 
     /**
      * The "x5c" (X.509 certificate chain) Header Parameter contains the X.509 public key certificate or certificate
@@ -87,7 +86,7 @@ public data class JOSEHeader(
      * certificate chain to be invalid if any validation failure occurs.
      */
     @SerialName("x5c")
-    public val x509CertChain: List<String>? = null,
+    public val x509CertChain: List<String>?
 
     /**
      * The "cty" (content type) Header Parameter is used by JWS applications to declare the media type
@@ -98,7 +97,7 @@ public data class JOSEHeader(
      * is ignored by JWS implementations; any processing of this parameter is performed by the JWS application.
      */
     @SerialName("cty")
-    public val contentType: String? = null,
+    public val contentType: String?
 
     /**
      * The "crit" (critical) Header Parameter indicates that extensions to this specification and/or
@@ -114,5 +113,5 @@ public data class JOSEHeader(
      * This Header Parameter MUST be understood and processed by implementations.
      */
     @SerialName("crit")
-    public val critical: List<String>? = null
-)
+    public val critical: List<String>?
+}

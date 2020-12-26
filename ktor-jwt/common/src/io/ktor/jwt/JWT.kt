@@ -7,17 +7,37 @@ package io.ktor.jwt
 import io.ktor.util.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
+import kotlinx.serialization.modules.*
 
 public object JWT {
     private val base64UrlFormat: Regex = Regex("[-A-Za-z0-9_]+")
+    private val serialModule: SerializersModule = SerializersModule {
+        //declare the interfaces as being defaulted to the data classes
+        polymorphic(JWTClaimsSet::class) {
+            subclass(JWTClaimsSetData::class)
+            subclass(JwtBuilder::class)
+            default { JWTClaimsSetData.serializer() }
+        }
+        polymorphic(JWTClaimsSet.Address::class){
+            subclass(JWTClaimsSetData.Address::class)
+            subclass(JwtBuilder.Address::class)
+            default { JWTClaimsSetData.Address.serializer() }
+        }
+        polymorphic(JOSEHeader::class) {
+            subclass(JOSEHeaderData::class)
+            subclass(JwtSignatureBuilder::class)
+            default { JOSEHeaderData.serializer() }
+        }
+    }
     internal val json: Json = Json {
         ignoreUnknownKeys = true
+        serializersModule = serialModule
     }
 
 
     @OptIn(ExperimentalSerializationApi::class)
     private val knownClaims:Set<String> = mutableSetOf<String>().also {
-        val claimsSerialiser = JWTClaimsSet.serializer()
+        val claimsSerialiser = JWTClaimsSetData.serializer()
         val numElements = claimsSerialiser.descriptor.elementsCount
         for (i in 0 until numElements) {
             it.add(claimsSerialiser.descriptor.getElementName(i))
@@ -63,9 +83,10 @@ public class JWSDecodeException(message: String, cause: Exception? = null): Runt
 public data class DecodedJWT(public val header: JOSEHeader, public val payload: JWTPayload, public val signature: UnverifiedSignature?)
 
 public data class JWTPayload(
-    public val claimsSet: IJWTClaimsSet,
+    public val claimsSet: JWTClaimsSet,
     public val unknownClaims: Map<String, JsonElement> = emptyMap()
-):  IJWTClaimsSet by claimsSet {
+) : JWTClaimsSet by claimsSet {
+
     public fun serialise(
         header: JOSEHeader
     ): String {

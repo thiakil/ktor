@@ -66,7 +66,7 @@ public object JWS {
     }
 
     public suspend fun sign(payload: JWTPayload, algorithm: JwsAlgorithm, keyProvider: KeyProvider, keyId: String? = null): String {
-        val header = JOSEHeader(
+        val header = JOSEHeaderData(
             type = "jwt",
             algorithm = algorithm.jwaId,
             keyId = keyId
