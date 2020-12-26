@@ -10,6 +10,7 @@ import io.ktor.http.auth.*
 import io.ktor.jwt.*
 import io.ktor.request.*
 import io.ktor.response.*
+import io.ktor.util.date.*
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.json.*
 import org.slf4j.*
@@ -188,40 +189,64 @@ private fun AuthenticationContext.bearerChallenge(
  */
 public typealias TokenValidatorFn = suspend TokenValidator.() -> Unit
 
+@Suppress("MemberVisibilityCanBePrivate", "unused")
 public class TokenValidator(public val token: DecodedJWT, private val keyProvider: KeyProvider){
+    /**
+     * Validates the token's signature.
+     * @param acceptNoneAlg Whether to accept tokens with no signature and algorithm set to "none"
+     */
     public suspend fun validateSignature(acceptNoneAlg: Boolean=false){
         try {
             if (!JWS.verify(token, keyProvider, acceptNoneAlg)) {
-                throw TokenValidationFailed("Signature failed validation")
+                fail("Signature failed validation")
             }
         } catch(ex: JwsException) {
-            throw TokenValidationFailed(ex.message, ex)
+            fail(ex.message, ex)
+        }
+    }
+
+    /**
+     * Require that [claimValue] is equal to [expected] or fail validation with
+     * "[message]. Expected [expected], found [claimValue]"
+     */
+    public fun <T> assertClaim(claimValue: T?, expected: T?, message: String) {
+        if (claimValue != expected) {
+            fail("${message}. Expected '$expected', found '$claimValue'")
+        }
+    }
+
+    /**
+     * Ensure the token is not expired.
+     * @param requireExpiry When true, a token without an expiry set is invalid.
+     */
+    public fun ensureNotExpired(requireExpiry: Boolean = true) {
+        if (requireExpiry && token.payload.expiresAt == null) {
+            fail("No expiry present")
+        }
+        token.payload.expiresAt?.let { exp ->
+            if (GMTDate() > exp){
+                fail("Token is expired")
+            }
         }
     }
 
     public fun requireKeyId(keyId: String?) {
-        if (token.header.keyId != keyId) {
-            throw TokenValidationFailed("KeyId mismatch")
-        }
+        assertClaim(token.header.keyId, keyId, "KeyId mismatch")
     }
 
     public fun requireAlgorithm(algorithm: JwsAlgorithm){
-        if (token.header.algorithm != algorithm.jwaId){
-            throw TokenValidationFailed("Algorithm mismatch")
-        }
+        assertClaim(token.header.algorithm, algorithm.jwaId, "Algorithm mismatch")
     }
 
     public fun requireIssuer(issuer: String) {
-        if (token.payload.issuer != issuer){
-            throw TokenValidationFailed("Issuer mismatch")
-        }
+        assertClaim(token.payload.issuer, issuer, "Issuer mismatch")
     }
 
     public fun requireAudience(audience: String) {
-        if (token.payload.audience?.contains(audience) != true){
-            throw TokenValidationFailed("Audience mismatch")
-        }
+        assertClaim(token.payload.audience?.contains(audience), true, "Audience mismatch")
     }
+    
+    public fun fail(reason: String, cause: Throwable? = null): Nothing = throw TokenValidationFailed(reason, cause)
 
     public class TokenValidationFailed(message: String, cause: Throwable? = null):Exception(message, cause)
 }
