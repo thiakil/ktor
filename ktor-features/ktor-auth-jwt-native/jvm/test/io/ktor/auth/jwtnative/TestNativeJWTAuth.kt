@@ -494,6 +494,7 @@ class JWTAuthTest {
     private val keyPair = KeyPairGenerator.getInstance("RSA").apply {
         initialize(2048, SecureRandom())
     }.generateKeyPair()
+    private val javaRsaKey = JavaRSAKey(keyPair)
     //private val jwkAlgorithm = Algorithm.RSA256(keyPair.public as RSAPublicKey, keyPair.private as RSAPrivateKey)
     private val jwkAlgorithm = RS256
     private val issuer = "https://jwt-provider-domain/"
@@ -502,7 +503,7 @@ class JWTAuthTest {
 
     private fun signJwt(keyId: String? = null, block: JwtBuilder.()->Unit): String {
         return runBlocking {
-            JWS.sign(makeJWT(block), jwkAlgorithm, { JavaPrivateRSAKey(keyPair.private as RSAPrivateKey) }, keyId ?: kid)
+            JWS.sign(makeJWT(block), jwkAlgorithm, { javaRsaKey }, keyId ?: kid)
         }
     }
 
@@ -518,7 +519,7 @@ class JWTAuthTest {
     private fun getJwkProviderMock(): KeyProvider {
         return {
             when (it) {
-                kid -> JavaPublicRSAKey(keyPair.public as RSAPublicKey)
+                kid -> javaRsaKey
                 else -> null
             }
         }
@@ -531,7 +532,7 @@ class JWTAuthTest {
                 audience = listOf(audience),
                 issuer = issuer
             )
-        ), jwkAlgorithm, { JavaPrivateRSAKey(keyPair.private as RSAPrivateKey) }, kid)
+        ), jwkAlgorithm, { javaRsaKey }, kid)
     }
 
     private fun getToken(scheme: String = "Bearer") = "$scheme " + runBlocking {
@@ -541,7 +542,7 @@ class JWTAuthTest {
                 audience = listOf(audience),
                 issuer = issuer
             )
-        ), jwkAlgorithm, { JavaPrivateRSAKey(keyPair.private as RSAPrivateKey) }, kid)
+        ), jwkAlgorithm, { javaRsaKey }, kid)
     }
 
 }

@@ -12,9 +12,11 @@ import java.security.*
 import java.security.interfaces.*
 import java.security.spec.*
 
-public data class JavaRSAKey(val publicKey: RSAPublicKey? = null, val privateKey: RSAPrivateKey? = null): SigningKey
+public data class JavaRSAKey(val publicKey: RSAPublicKey? = null, val privateKey: RSAPrivateKey? = null): SigningKey {
+    public constructor(keyPair: KeyPair): this(keyPair.public as RSAPublicKey, keyPair.private as RSAPrivateKey)
+}
 
-internal fun JsonWebKey.RSA.toJavaRSAPublicKey(): RSAPublicKey {
+public fun JsonWebKey.RSA.toJavaRSAPublicKey(): RSAPublicKey {
     if (!this.isValidPublicKey) {
         throw UnsupportedKeyException("Not a valid RSA public key")
     }
@@ -28,7 +30,7 @@ internal fun JsonWebKey.RSA.toJavaRSAPublicKey(): RSAPublicKey {
         throw UnsupportedKeyException(e.message?:"NoSuchAlgorithmException", e)
     }
 }
-internal fun JsonWebKey.RSA.toJavaRSAPrivateKey(): RSAPrivateKey {
+public fun JsonWebKey.RSA.toJavaRSAPrivateKey(): RSAPrivateKey {
     if (!this.isValidPrivateKey) {
         throw UnsupportedKeyException("Not a valid RSA private key")
     }
