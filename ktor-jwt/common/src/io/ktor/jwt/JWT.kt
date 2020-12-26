@@ -63,7 +63,7 @@ public class JWSDecodeException(message: String, cause: Exception? = null): Runt
 public data class DecodedJWT(public val header: JOSEHeader, public val payload: JWTPayload, public val signature: UnverifiedSignature?)
 
 public data class JWTPayload(
-    public val claimsSet: JWTClaimsSet,
+    public val claimsSet: IJWTClaimsSet,
     public val unknownClaims: Map<String, JsonElement> = emptyMap()
 ):  IJWTClaimsSet by claimsSet {
     public fun serialise(

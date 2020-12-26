@@ -336,7 +336,7 @@ public interface IJWTClaimsSet {
      * of the members defined in OpenId Connect [Section 5.1.1](https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim).
      */
     @SerialName("address")
-    public val address: JWTClaimsSet.Address?
+    public val address: Address?
 
     /**
      * OpenID Connect claim.
@@ -358,4 +358,49 @@ public interface IJWTClaimsSet {
      */
     @SerialName("sid")
     public val sessionId: String?
+
+    /**
+     * Address claim object for [address]
+     */
+    public interface Address {
+        /**
+         * Full mailing address, formatted for display or use on a mailing label. This field MAY contain multiple lines,
+         * separated by newlines. Newlines can be represented either as a carriage return/line feed pair ("\r\n") or as a
+         * single line feed character ("\n").
+         */
+        @SerialName("formatted")
+        public val formatted: String?
+
+        /**
+         * Full street address component, which MAY include house number, street name, Post Office Box, and multi-line
+         * extended street address information. This field MAY contain multiple lines, separated by newlines. Newlines can
+         * be represented either as a carriage return/line feed pair ("\r\n") or as a single line feed character ("\n").
+         */
+        @SerialName("street_address")
+        public val streetAddress: String?
+
+        /**
+         * City or locality component.
+         */
+        @SerialName("locality")
+        public val locality: String?
+
+        /**
+         * State, province, prefecture, or region component.
+         */
+        @SerialName("region")
+        public val region: String?
+
+        /**
+         * Zip code or postal code component.
+         */
+        @SerialName("postal_code")
+        public val postalCode: String?
+
+        /**
+         * Country name component.
+         */
+        @SerialName("country")
+        public val country: String?
+    }
 }

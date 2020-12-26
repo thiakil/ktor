@@ -100,41 +100,7 @@ public class JwtBuilder: IJWTClaimsSet {
 
     internal fun build(): JWTPayload {
         return JWTPayload(
-            JWTClaimsSet(
-                issuer = issuer,
-                subject = subject,
-                audience = audience,
-                expiresAt = expiresAt,
-                notBefore = notBefore,
-                issuedAt = issuedAt,
-                jwtId = jwtId,
-                authTime = authTime,
-                nonce = nonce,
-                authenticationContextClassReference = authenticationContextClassReference,
-                authenticationMethodsReferences = authenticationMethodsReferences,
-                authorizedParty = authorizedParty,
-                accessTokenHash = accessTokenHash,
-                name = name,
-                givenName = givenName,
-                familyName = familyName,
-                middleName = middleName,
-                nickname = nickname,
-                preferredUsername = preferredUsername,
-                profile = profile,
-                picture = picture,
-                website = website,
-                email = email,
-                emailVerified = emailVerified,
-                gender = gender,
-                birthdate = birthdate,
-                zoneinfo = zoneinfo,
-                locale = locale,
-                phoneNumber = phoneNumber,
-                phoneNumberVerified = phoneNumberVerified,
-                address = address,
-                updatedAt = updatedAt,
-                sessionId = sessionId
-            ),
+            this,
             additionalClaims
         )
     }
