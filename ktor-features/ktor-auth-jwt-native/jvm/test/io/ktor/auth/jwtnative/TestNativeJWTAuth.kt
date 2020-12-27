@@ -109,7 +109,7 @@ class JWTAuthTest {
                 }
             }
 
-            val token = getToken()
+            val token = getHmacToken()
             handleRequestWithToken(token).let { call ->
                 verifyResponseUnauthorized(call)
                 assertEquals(
@@ -142,7 +142,7 @@ class JWTAuthTest {
         withApplication {
             application.configureServerJwtNative()
 
-            val token = getToken()
+            val token = getHmacToken()
             println(token)
 
             val response = handleRequestWithToken(token)
@@ -160,7 +160,7 @@ class JWTAuthTest {
                 authSchemes("Bearer", "Token")
             }
 
-            val token = getToken(scheme = "Token")
+            val token = getHmacToken(scheme = "Token")
 
             val response = handleRequestWithToken(token)
 
@@ -177,7 +177,7 @@ class JWTAuthTest {
                 authSchemes("Bearer", "tokEN")
             }
 
-            val token = getToken(scheme = "TOKen")
+            val token = getHmacToken(scheme = "TOKen")
 
             val response = handleRequestWithToken(token)
 
@@ -191,13 +191,14 @@ class JWTAuthTest {
     fun testJwtAlgorithmMismatch() {
         withApplication {
             application.configureServerJwtNative()
-            val token = runBlocking {
-                JWS.sign(makeJWT {
-                    singleAudience = this@JWTAuthTest.audience
-                    issuer = this@JWTAuthTest.issuer
-                }, HS256, { HmacStringKey("false") })
+            val token = makeJWT {
+                singleAudience = JWTAuthTest.audience
+                issuer = JWTAuthTest.issuer
+            }.signSync {
+                alg = HS256
+                key = HmacStringKey("false")
             }
-            val response = handleRequestWithToken(token)
+            val response = handleRequestWithToken("Bearer $token")
             verifyResponseUnauthorized(response)
         }
     }
@@ -206,11 +207,15 @@ class JWTAuthTest {
     fun testJwtAudienceMismatch() {
         withApplication {
             application.configureServerJwtNative()
-            val token = signJwt {
+            val token = makeJWT {
                 singleAudience = "wrong"
-                issuer = this@JWTAuthTest.issuer
+                issuer = JWTAuthTest.issuer
+            }.signSync {
+                alg = jwkAlgorithm
+                key = javaRsaKey
+                keyId = JWTAuthTest.kid
             }
-            val response = handleRequestWithToken(token)
+            val response = handleRequestWithToken("Bearer $token")
             verifyResponseUnauthorized(response)
         }
     }
@@ -220,11 +225,14 @@ class JWTAuthTest {
         withApplication {
             application.configureServerJwtNative()
             //val token = JWT.create().withAudience(audience).withIssuer("wrong").sign(algorithm)
-            val token = signJwt {
-                singleAudience = this@JWTAuthTest.audience
+            val token = makeJWT {
+                singleAudience = JWTAuthTest.audience
                 issuer = "wrong"
+            }.signSync {
+                alg = JWTAuthTest.algorithm
+                key = hmacKey
             }
-            val response = handleRequestWithToken(token)
+            val response = handleRequestWithToken("Bearer $token")
             verifyResponseUnauthorized(response)
         }
     }
@@ -247,7 +255,7 @@ class JWTAuthTest {
         withApplication {
             application.configureServerJwk()
 
-            val token = getJwkToken()
+            val token = getRSAToken()
 
             val response = handleRequestWithToken(token)
 
@@ -262,7 +270,7 @@ class JWTAuthTest {
         withApplication {
             application.configureServerJwkNoIssuer()
 
-            val token = getJwkToken()
+            val token = getRSAToken()
 
             val response = handleRequestWithToken(token)
 
@@ -276,8 +284,8 @@ class JWTAuthTest {
     fun testJwtAuthSchemeMismatch() {
         withApplication {
             application.configureServerJwtNative()
-            val token = getToken().removePrefix("Bearer ")
-            val response = handleRequestWithToken(token)
+            val token = getHmacToken().removePrefix("Bearer ")
+            val response = handleRequestWithToken(token, true)
             verifyResponseUnauthorized(response)
         }
     }
@@ -286,7 +294,7 @@ class JWTAuthTest {
     fun testJwtAuthSchemeMismatch2() {
         withApplication {
             application.configureServerJwtNative()
-            val token = getToken("Token")
+            val token = getHmacToken("Token")
             val response = handleRequestWithToken(token)
             verifyResponseUnauthorized(response)
         }
@@ -296,7 +304,7 @@ class JWTAuthTest {
     fun testJwtAuthSchemeMistake() {
         withApplication {
             application.configureServerJwtNative()
-            val token = getToken().replace("Bearer", "Bearer:")
+            val token = getHmacToken().replace("Bearer", "Bearer:")
             val response = handleRequestWithToken(token)
             verifyResponseBadRequest(response)
         }
@@ -306,9 +314,9 @@ class JWTAuthTest {
     fun testJwtBlobPatternMismatch() {
         withApplication {
             application.configureServerJwtNative()
-            val token = getToken().let {
+            val token = getHmacToken().let {
                 val i = it.length - 2
-                it.replaceRange(i..i + 1, " ")
+                it.replaceRange(i..i + 1, "@")
             }
             val response = handleRequestWithToken(token)
             verifyResponseUnauthorized(response)
@@ -319,8 +327,8 @@ class JWTAuthTest {
     fun testJwkAuthSchemeMismatch() {
         withApplication {
             application.configureServerJwk()
-            val token = getJwkToken(false)
-            val response = handleRequestWithToken(token)
+            val token = getRSAToken(false)
+            val response = handleRequestWithToken(token, true)
             verifyResponseUnauthorized(response)
         }
     }
@@ -329,7 +337,7 @@ class JWTAuthTest {
     fun testJwkAuthSchemeMistake() {
         withApplication {
             application.configureServerJwk()
-            val token = getJwkToken(true).replace("Bearer", "Bearer:")
+            val token = getRSAToken(true).replace("Bearer", "Bearer:")
             val response = handleRequestWithToken(token)
             verifyResponseBadRequest(response)
         }
@@ -339,9 +347,9 @@ class JWTAuthTest {
     fun testJwkBlobPatternMismatch() {
         withApplication {
             application.configureServerJwk()
-            val token = getJwkToken(true).let {
+            val token = getRSAToken(true).let {
                 val i = it.length - 2
-                it.replaceRange(i..i + 1, " ")
+                it.replaceRange(i..i + 1, "@")
             }
             val response = handleRequestWithToken(token)
             verifyResponseUnauthorized(response)
@@ -353,9 +361,13 @@ class JWTAuthTest {
         withApplication {
             application.configureServerJwk()
 
-            val token = "Bearer " + signJwt ("wrong") {
-                singleAudience = this@JWTAuthTest.audience
-                issuer = this@JWTAuthTest.issuer
+            val token = "Bearer " + makeJWT {
+                singleAudience = JWTAuthTest.audience
+                issuer = JWTAuthTest.issuer
+            }.signSync {
+                key = javaRsaKey
+                keyId = "wrong"
+                alg = jwkAlgorithm
             }
 
             val response = handleRequestWithToken(token)
@@ -388,7 +400,7 @@ class JWTAuthTest {
     fun authHeaderFromCookie(): Unit = withApplication {
         application.configureServer {
             jwtNative {
-                this@jwtNative.realm = this@JWTAuthTest.realm
+                this@jwtNative.realm = JWTAuthTest.realm
                 authHeader { call ->
                     call.request.cookies["JWT"]?.let { parseAuthorizationHeader(it) }
                 }
@@ -397,7 +409,7 @@ class JWTAuthTest {
             }
         }
 
-        val token = getToken()
+        val token = getHmacToken()
 
         val response = handleRequest {
             uri = "/"
@@ -427,7 +439,10 @@ class JWTAuthTest {
         assertNull(response.response.content)
     }
 
-    private fun TestApplicationEngine.handleRequestWithToken(token: String): TestApplicationCall {
+    private fun TestApplicationEngine.handleRequestWithToken(token: String, intentionalBadHeader: Boolean = false): TestApplicationCall {
+        if (!intentionalBadHeader) {
+            assertEquals(2, token.split(" ").size, "Bad auth header value: <$token>")
+        }
         return handleRequest {
             uri = "/"
             addHeader(HttpHeaders.Authorization, token)
@@ -436,7 +451,7 @@ class JWTAuthTest {
 
     private fun Application.configureServerJwk(challenge: Boolean = false) = configureServer {
         jwtNative {
-            this@jwtNative.realm = this@JWTAuthTest.realm
+            this@jwtNative.realm = JWTAuthTest.realm
             keyProvider(getJwkProviderMock())
             validator {
                 //requireKeyId(kid)
@@ -461,7 +476,7 @@ class JWTAuthTest {
 
     private fun Application.configureServerJwkNoIssuer() = configureServer {
         jwtNative {
-            this@jwtNative.realm = this@JWTAuthTest.realm
+            this@jwtNative.realm = JWTAuthTest.realm
             keyProvider(getJwkProviderMock())
             validator { requireAudience(audience) }
         }
@@ -469,7 +484,7 @@ class JWTAuthTest {
 
     private fun Application.configureServerJwtNative(extra: JWTNativeAuthenticationProvider.Configuration.() -> Unit = {}) = configureServer {
         jwtNative {
-            this@jwtNative.realm = this@JWTAuthTest.realm
+            this@jwtNative.realm = JWTAuthTest.realm
             keyProvider(getJwkProviderMock())
             validator(makeJwtVerifier())
             extra()
@@ -490,59 +505,62 @@ class JWTAuthTest {
         }
     }
 
-    //private val algorithm = Algorithm.HMAC256("secret")
-    private val keyPair = KeyPairGenerator.getInstance("RSA").apply {
-        initialize(2048, SecureRandom())
-    }.generateKeyPair()
-    private val javaRsaKey = JavaRSAKey(keyPair)
-    //private val jwkAlgorithm = Algorithm.RSA256(keyPair.public as RSAPublicKey, keyPair.private as RSAPrivateKey)
-    private val jwkAlgorithm = RS256
-    private val issuer = "https://jwt-provider-domain/"
-    private val audience = "jwt-audience"
-    private val realm = "ktor jwt auth test"
+    companion object {
 
-    private fun signJwt(keyId: String? = null, block: JwtBuilder.()->Unit): String {
-        return runBlocking {
-            JWS.sign(makeJWT(block), jwkAlgorithm, { javaRsaKey }, keyId ?: kid)
+        private val algorithm = HS256
+        private val hmacKey = HmacStringKey("secret")
+        private val keyPair = KeyPairGenerator.getInstance("RSA").apply {
+            initialize(2048, SecureRandom())
+        }.generateKeyPair()
+        private val javaRsaKey = JavaRSAKey(keyPair)
+
+        //private val jwkAlgorithm = Algorithm.RSA256(keyPair.public as RSAPublicKey, keyPair.private as RSAPrivateKey)
+        private val jwkAlgorithm = RS256
+        private const val issuer = "https://jwt-provider-domain/"
+        private const val audience = "jwt-audience"
+        private const val realm = "ktor jwt auth test"
+
+        private fun makeJwtVerifier(): TokenValidatorFn = {
+            //requireAlgorithm(algorithm)
+            validateSignature()
+            requireAudience(audience)
+            requireIssuer(issuer)
         }
-    }
 
-    private fun makeJwtVerifier(): TokenValidatorFn = {
-        requireAlgorithm(jwkAlgorithm)
-        validateSignature()
-        requireAudience(audience)
-        requireIssuer(issuer)
-    }
+        private const val kid = "NkJCQzIyQzRBMEU4NjhGNUU4MzU4RkY0M0ZDQzkwOUQ0Q0VGNUMwQg"
 
-    private val kid = "NkJCQzIyQzRBMEU4NjhGNUU4MzU4RkY0M0ZDQzkwOUQ0Q0VGNUMwQg"
-
-    private fun getJwkProviderMock(): KeyProvider {
-        return {
-            when (it) {
-                kid -> javaRsaKey
-                else -> null
+        private fun getJwkProviderMock(): KeyProvider {
+            return {
+                when (it) {
+                    kid -> javaRsaKey
+                    "wrong" -> null
+                    else -> hmacKey
+                }
             }
         }
-    }
 
-    private fun getJwkToken(prefix: Boolean = true) = (if (prefix) "Bearer " else "") + runBlocking {
-        JWS.sign(
-            JWTPayload(
-            JWTClaimsSet(
-                audience = listOf(audience),
-                issuer = issuer
-            )
-        ), jwkAlgorithm, { javaRsaKey }, kid)
-    }
+        /** RSA */
+        private fun getRSAToken(prefix: Boolean = true) = (if (prefix) "Bearer " else "") + runBlocking {
+            makeJWT {
+                singleAudience = this@Companion.audience
+                issuer = this@Companion.issuer
+            }.sign {
+                alg = jwkAlgorithm
+                key = javaRsaKey
+                keyId = kid
+            }
+        }
 
-    private fun getToken(scheme: String = "Bearer") = "$scheme " + runBlocking {
-        JWS.sign(
-            JWTPayload(
-            JWTClaimsSet(
-                audience = listOf(audience),
-                issuer = issuer
-            )
-        ), jwkAlgorithm, { javaRsaKey }, kid)
+        /** HMAC */
+        private fun getHmacToken(scheme: String = "Bearer") = "$scheme " + runBlocking {
+            makeJWT {
+                singleAudience = this@Companion.audience
+                issuer = this@Companion.issuer
+            }.sign {
+                alg = this@Companion.algorithm
+                key = hmacKey
+            }
+        }
     }
 
 }

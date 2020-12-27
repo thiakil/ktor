@@ -6,6 +6,7 @@ package io.ktor.jwt
 
 import io.ktor.jwt.algorithms.*
 import io.ktor.util.date.*
+import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
@@ -307,5 +308,14 @@ public class JwtSignatureBuilder(
 public suspend fun JWTPayload.sign(block: suspend JwtSignatureBuilder.()->Unit): String {
     val sig = JwtSignatureBuilder(this)
     sig.block()
+    return sig.build()
+}
+
+@JwtDSL
+public fun JWTPayload.signSync(block: suspend JwtSignatureBuilder.()->Unit): String {
+    val sig = JwtSignatureBuilder(this)
+    runBlocking {
+        sig.block()
+    }
     return sig.build()
 }
