@@ -185,7 +185,7 @@ private fun AuthenticationContext.bearerChallenge(
 
 /**
  * Specifies what to send back if session authentication fails.
- * @throws TokenValidator.TokenValidationFailed on validation failure
+ * @throws TokenValidator.TokenValidationFailed on validation failure usually via [TokenValidator.fail]
  */
 public typealias TokenValidatorFn = suspend TokenValidator.() -> Unit
 
@@ -198,7 +198,7 @@ public class TokenValidator(public val token: DecodedJWT, private val keyProvide
     public suspend fun validateSignature(acceptNoneAlg: Boolean=false){
         try {
             if (!JWS.verify(token, keyProvider, acceptNoneAlg)) {
-                fail("Signature failed validation")
+                fail("Signature doesn't match")
             }
         } catch(ex: JwsException) {
             fail(ex.message, ex)
@@ -263,7 +263,7 @@ private suspend fun verifyAndValidate(
         try {
             JWT.decode(it)
         } catch (ex: JWSDecodeException) {
-            JWTLogger.trace("Token decode failed: {}", ex.message)
+            JWTLogger.debug("Token decode failed: {}", ex.message, ex)
             return@let null
         }
     } ?: return null
@@ -271,7 +271,7 @@ private suspend fun verifyAndValidate(
     try {
         jwtValidatorFn(TokenValidator(jwt, keyProvider))
     } catch (ex: TokenValidator.TokenValidationFailed){
-        JWTLogger.trace("Token validation failed: {}", ex.message)
+        JWTLogger.debug("Token validation failed: {}", ex.message, ex)
         return null
     }
 

@@ -188,99 +188,6 @@ class JWTAuthTest {
     }
 
     @Test
-    fun testJwtAlgorithmMismatch() {
-        withApplication {
-            application.configureServerJwtNative()
-            val token = makeJWT {
-                singleAudience = JWTAuthTest.audience
-                issuer = JWTAuthTest.issuer
-            }.signSync {
-                alg = HS256
-                key = HmacStringKey("false")
-            }
-            val response = handleRequestWithToken("Bearer $token")
-            verifyResponseUnauthorized(response)
-        }
-    }
-
-    @Test
-    fun testJwtAudienceMismatch() {
-        withApplication {
-            application.configureServerJwtNative()
-            val token = makeJWT {
-                singleAudience = "wrong"
-                issuer = JWTAuthTest.issuer
-            }.signSync {
-                alg = jwkAlgorithm
-                key = javaRsaKey
-                keyId = JWTAuthTest.kid
-            }
-            val response = handleRequestWithToken("Bearer $token")
-            verifyResponseUnauthorized(response)
-        }
-    }
-
-    @Test
-    fun testJwtIssuerMismatch() {
-        withApplication {
-            application.configureServerJwtNative()
-            //val token = JWT.create().withAudience(audience).withIssuer("wrong").sign(algorithm)
-            val token = makeJWT {
-                singleAudience = JWTAuthTest.audience
-                issuer = "wrong"
-            }.signSync {
-                alg = JWTAuthTest.algorithm
-                key = hmacKey
-            }
-            val response = handleRequestWithToken("Bearer $token")
-            verifyResponseUnauthorized(response)
-        }
-    }
-
-    @Test
-    fun testJwkNoAuth() {
-        withApplication {
-            application.configureServerJwk()
-
-            val response = handleRequest {
-                uri = "/"
-            }
-
-            verifyResponseUnauthorized(response)
-        }
-    }
-
-    @Test
-    fun testJwkSuccess() {
-        withApplication {
-            application.configureServerJwk()
-
-            val token = getRSAToken()
-
-            val response = handleRequestWithToken(token)
-
-            assertTrue(response.requestHandled)
-            assertEquals(HttpStatusCode.OK, response.response.status())
-            assertNotNull(response.response.content)
-        }
-    }
-
-    @Test
-    fun testJwkSuccessNoIssuer() {
-        withApplication {
-            application.configureServerJwkNoIssuer()
-
-            val token = getRSAToken()
-
-            val response = handleRequestWithToken(token)
-
-            assertTrue(response.requestHandled)
-            assertEquals(HttpStatusCode.OK, response.response.status())
-            assertNotNull(response.response.content)
-        }
-    }
-
-    @Test
     fun testJwtAuthSchemeMismatch() {
         withApplication {
             application.configureServerJwtNative()
@@ -316,42 +223,9 @@ class JWTAuthTest {
             application.configureServerJwtNative()
             val token = getHmacToken().let {
                 val i = it.length - 2
-                it.replaceRange(i..i + 1, "@")
+                it.replaceRange(i..i + 1, " ")
             }
-            val response = handleRequestWithToken(token)
-            verifyResponseUnauthorized(response)
-        }
-    }
-
-    @Test
-    fun testJwkAuthSchemeMismatch() {
-        withApplication {
-            application.configureServerJwk()
-            val token = getRSAToken(false)
             val response = handleRequestWithToken(token, true)
-            verifyResponseUnauthorized(response)
-        }
-    }
-
-    @Test
-    fun testJwkAuthSchemeMistake() {
-        withApplication {
-            application.configureServerJwk()
-            val token = getRSAToken(true).replace("Bearer", "Bearer:")
-            val response = handleRequestWithToken(token)
-            verifyResponseBadRequest(response)
-        }
-    }
-
-    @Test
-    fun testJwkBlobPatternMismatch() {
-        withApplication {
-            application.configureServerJwk()
-            val token = getRSAToken(true).let {
-                val i = it.length - 2
-                it.replaceRange(i..i + 1, "@")
-            }
-            val response = handleRequestWithToken(token)
             verifyResponseUnauthorized(response)
         }
     }
@@ -395,6 +269,36 @@ class JWTAuthTest {
         }
     }
 
+    /**
+     * Verify that a successful validation succeeds, and a failed one prevents authorization
+     */
+    @Test
+    fun testValidatorFailsAuth() {
+        withApplication {
+            var validationResult = true
+            application.configureServer {
+                jwtNative {
+                    validator {
+                        if (!validationResult) {
+                            fail("custom failure message")
+                        }
+                    }
+                }
+            }
+            val token = getHmacToken()
+            var response = handleRequestWithToken(token)
+            assertTrue(response.requestHandled)
+            assertEquals(HttpStatusCode.OK, response.response.status())
+
+            validationResult = false
+            response = handleRequestWithToken(token)
+            verifyResponseUnauthorized(response)
+            val authContext = response.response.call.authentication
+            assertNotEquals(0, authContext.allFailures.size)
+            val failure = authContext.allFailures.find { it is AuthenticationFailedCause.InvalidCredentials }
+            assertNotNull(failure)
+        }
+    }
 
     @Test
     fun authHeaderFromCookie(): Unit = withApplication {
@@ -471,14 +375,6 @@ class JWTAuthTest {
                     )
                 }
             }
-        }
-    }
-
-    private fun Application.configureServerJwkNoIssuer() = configureServer {
-        jwtNative {
-            this@jwtNative.realm = JWTAuthTest.realm
-            keyProvider(getJwkProviderMock())
-            validator { requireAudience(audience) }
         }
     }
 
