@@ -4,6 +4,7 @@
 
 package io.ktor.jwt
 
+import io.ktor.util.*
 import kotlin.test.*
 
 class TestJwk {
@@ -76,7 +77,8 @@ class TestJwk {
         assertEquals("2011-04-29", key2.keyId)
         assertEquals("RS256", key2.algorithm)
         assertTrue(key2 is JsonWebKey.RSA)
-        assertEquals("AQAB", key2.exponent)
+        assertNotNull(key2.exponent)
+        assertEquals("AQAB", key2.exponent!!.encodeBase64Url())
         assertNotNull(key2.modulus)
         assertTrue(key2.isValidPublicKey)
         assertFalse(key2.isValidPrivateKey)
@@ -103,7 +105,8 @@ class TestJwk {
         assertEquals("2011-04-29", key2.keyId)
         assertEquals("RS256", key2.algorithm)
         assertTrue(key2 is JsonWebKey.RSA)
-        assertEquals("AQAB", key2.exponent)
+        assertNotNull(key2.exponent)
+        assertEquals("AQAB", key2.exponent!!.encodeBase64Url())
         assertNotNull(key2.modulus)
         assertTrue(key2.isValidPublicKey)
         assertTrue(key2.isValidPrivateKey)

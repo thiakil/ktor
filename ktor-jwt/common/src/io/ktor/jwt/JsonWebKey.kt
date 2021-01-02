@@ -6,6 +6,7 @@ package io.ktor.jwt
 
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
+import kotlin.contracts.*
 
 @Serializable
 public sealed class JsonWebKey: SigningKey {
@@ -344,7 +345,8 @@ public sealed class JsonWebKey: SigningKey {
          * representation.
          */
         @SerialName("n")
-        public val modulus: String? = null,
+        @Serializable(with = Base64UrlBinary::class)
+        public val modulus: ByteArray? = null,
 
         /**
          * The "e" (exponent) parameter contains the exponent value for the RSA
@@ -355,7 +357,8 @@ public sealed class JsonWebKey: SigningKey {
          * the resulting representation for this value is "AQAB".
          */
         @SerialName("e")
-        public val exponent: String? = null,
+        @Serializable(with = Base64UrlBinary::class)
+        public val exponent: ByteArray? = null,
         //endregion
 
         //region RSA Private Keys
@@ -372,21 +375,24 @@ public sealed class JsonWebKey: SigningKey {
          * than two prime factors were used.
          */
         @SerialName("d")
-        public val privateExponent: String? = null,
+        @Serializable(with = Base64UrlBinary::class)
+        public val privateExponent: ByteArray? = null,
 
         /**
          * The "p" (first prime factor) parameter contains the first prime
          * factor.  It is represented as a Base64urlUInt-encoded value.
          */
         @SerialName("p")
-        public val firstPrimeFactor: String? = null,
+        @Serializable(with = Base64UrlBinary::class)
+        public val firstPrimeFactor: ByteArray? = null,
 
         /**
          * The "q" (second prime factor) parameter contains the second prime
          * factor.  It is represented as a Base64urlUInt-encoded value.
          */
         @SerialName("q")
-        public val secondPrimeFactor: String? = null,
+        @Serializable(with = Base64UrlBinary::class)
+        public val secondPrimeFactor: ByteArray? = null,
 
         /**
          * The "dp" (first factor CRT exponent) parameter contains the Chinese
@@ -394,7 +400,8 @@ public sealed class JsonWebKey: SigningKey {
          * represented as a Base64urlUInt-encoded value.
          */
         @SerialName("dp")
-        public val firstFactorCRTExponent: String? = null,
+        @Serializable(with = Base64UrlBinary::class)
+        public val firstFactorCRTExponent: ByteArray? = null,
 
         /**
          * The "dq" (second factor CRT exponent) parameter contains the CRT
@@ -402,7 +409,8 @@ public sealed class JsonWebKey: SigningKey {
          * encoded value.
          */
         @SerialName("dq")
-        public val secondFactorCRTExponent: String? = null,
+        @Serializable(with = Base64UrlBinary::class)
+        public val secondFactorCRTExponent: ByteArray? = null,
 
         /**
          * The "qi" (first CRT coefficient) parameter contains the CRT
@@ -410,7 +418,8 @@ public sealed class JsonWebKey: SigningKey {
          * Base64urlUInt-encoded value.
          */
         @SerialName("qi")
-        public val firstCRTCoefficient: String? = null,
+        @Serializable(with = Base64UrlBinary::class)
+        public val firstCRTCoefficient: ByteArray? = null,
 
         /**
          * The "oth" (other primes info) parameter contains an array of
@@ -430,14 +439,15 @@ public sealed class JsonWebKey: SigningKey {
     ): JsonWebKey() {
 
         @Serializable
-        public class OtherPrimeInfo (
+        public data class OtherPrimeInfo (
             /**
              * The "r" (prime factor) parameter within an "oth" array member
              * represents the value of a subsequent prime factor.  It is represented
              * as a Base64urlUInt-encoded value.
              */
             @SerialName("r")
-            public val primeFactor: String,
+            @Serializable(with = Base64UrlBinary::class)
+            public val primeFactor: ByteArray,
 
             /**
              * The "d" (factor CRT exponent) parameter within an "oth" array member
@@ -445,7 +455,8 @@ public sealed class JsonWebKey: SigningKey {
              * represented as a Base64urlUInt-encoded value.
              */
             @SerialName("d")
-            public val factorCRTExponent: String,
+            @Serializable(with = Base64UrlBinary::class)
+            public val factorCRTExponent: ByteArray,
 
             /**
              * The "t" (factor CRT coefficient) parameter within an "oth" array
@@ -453,12 +464,87 @@ public sealed class JsonWebKey: SigningKey {
              * factor.  It is represented as a Base64urlUInt-encoded value.
              */
             @SerialName("t")
-            public val factorCRTCoefficient: String,
-        )
+            @Serializable(with = Base64UrlBinary::class)
+            public val factorCRTCoefficient: ByteArray,
+        ) {
+            override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (other !is OtherPrimeInfo) return false
+
+                if (!primeFactor.contentEquals(other.primeFactor)) return false
+                if (!factorCRTExponent.contentEquals(other.factorCRTExponent)) return false
+                if (!factorCRTCoefficient.contentEquals(other.factorCRTCoefficient)) return false
+
+                return true
+            }
+
+            override fun hashCode(): Int {
+                var result = primeFactor.contentHashCode()
+                result = 31 * result + factorCRTExponent.contentHashCode()
+                result = 31 * result + factorCRTCoefficient.contentHashCode()
+                return result
+            }
+        }
         //endregion
 
         public val isValidPublicKey: Boolean get() = modulus != null && exponent != null
-        public val isValidPrivateKey: Boolean get() = privateExponent != null
+        public val isValidPrivateKey: Boolean get() = isValidPublicKey && privateExponent != null
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is RSA) return false
+            if (!super.equals(other)) return false
+
+            if (modulus != null) {
+                if (other.modulus == null) return false
+                if (!modulus.contentEquals(other.modulus)) return false
+            } else if (other.modulus != null) return false
+            if (exponent != null) {
+                if (other.exponent == null) return false
+                if (!exponent.contentEquals(other.exponent)) return false
+            } else if (other.exponent != null) return false
+            if (privateExponent != null) {
+                if (other.privateExponent == null) return false
+                if (!privateExponent.contentEquals(other.privateExponent)) return false
+            } else if (other.privateExponent != null) return false
+            if (firstPrimeFactor != null) {
+                if (other.firstPrimeFactor == null) return false
+                if (!firstPrimeFactor.contentEquals(other.firstPrimeFactor)) return false
+            } else if (other.firstPrimeFactor != null) return false
+            if (secondPrimeFactor != null) {
+                if (other.secondPrimeFactor == null) return false
+                if (!secondPrimeFactor.contentEquals(other.secondPrimeFactor)) return false
+            } else if (other.secondPrimeFactor != null) return false
+            if (firstFactorCRTExponent != null) {
+                if (other.firstFactorCRTExponent == null) return false
+                if (!firstFactorCRTExponent.contentEquals(other.firstFactorCRTExponent)) return false
+            } else if (other.firstFactorCRTExponent != null) return false
+            if (secondFactorCRTExponent != null) {
+                if (other.secondFactorCRTExponent == null) return false
+                if (!secondFactorCRTExponent.contentEquals(other.secondFactorCRTExponent)) return false
+            } else if (other.secondFactorCRTExponent != null) return false
+            if (firstCRTCoefficient != null) {
+                if (other.firstCRTCoefficient == null) return false
+                if (!firstCRTCoefficient.contentEquals(other.firstCRTCoefficient)) return false
+            } else if (other.firstCRTCoefficient != null) return false
+            if (otherPrimesInfo != other.otherPrimesInfo) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = super.hashCode()
+            result = 31 * result + (modulus?.contentHashCode() ?: 0)
+            result = 31 * result + (exponent?.contentHashCode() ?: 0)
+            result = 31 * result + (privateExponent?.contentHashCode() ?: 0)
+            result = 31 * result + (firstPrimeFactor?.contentHashCode() ?: 0)
+            result = 31 * result + (secondPrimeFactor?.contentHashCode() ?: 0)
+            result = 31 * result + (firstFactorCRTExponent?.contentHashCode() ?: 0)
+            result = 31 * result + (secondFactorCRTExponent?.contentHashCode() ?: 0)
+            result = 31 * result + (firstCRTCoefficient?.contentHashCode() ?: 0)
+            result = 31 * result + (otherPrimesInfo?.hashCode() ?: 0)
+            return result
+        }
     }
 
     @Serializable
