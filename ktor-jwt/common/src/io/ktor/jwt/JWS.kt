@@ -60,7 +60,7 @@ public object JWS {
         if (jwt.signature == null) {
             return false
         }
-        val verifier = JWSAlgorithmRegistry.JWS_ALGORITHMS[algorithm] ?: throw UnsupportedJWAlgorithm(algorithm)
+        val verifier = JWS_ALGORITHMS[algorithm] ?: throw UnsupportedJWAlgorithm(algorithm)
         val signingKey = keyProvider(jwt.header.keyId) ?: return false
         return verifier.verify(jwt.signature, signingKey)
     }
@@ -76,9 +76,7 @@ public object JWS {
     }
 }
 
-public expect object JWSAlgorithmRegistry {
-    internal val JWS_ALGORITHMS: Map<String, JwsAlgorithm>
-}
+internal expect val JWS_ALGORITHMS: Map<String, JwsAlgorithm>
 
 public sealed class JwsException(override val message: String, cause: Exception?=null): Exception(message, cause)
 

@@ -4,6 +4,4 @@
 
 package io.ktor.jwt
 
-public actual object JWSAlgorithmRegistry {
-    internal actual val JWS_ALGORITHMS: Map<String, JwsAlgorithm> = error("TODO")
-}
+internal actual val JWS_ALGORITHMS: Map<String, JwsAlgorithm> = error("TODO")
