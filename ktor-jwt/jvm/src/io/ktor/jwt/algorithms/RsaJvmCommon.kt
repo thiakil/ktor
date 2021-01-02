@@ -32,6 +32,15 @@ public fun JsonWebKey.RSA.toJavaRSAPublicKey(): RSAPublicKey {
     }
 }
 
+/** try [java.security.KeyFactory.generatePrivate] with provided spec, returning null if it fails */
+private fun KeyFactory.tryPrivateKeySpec(spec: KeySpec): PrivateKey? {
+    return try {
+        this.generatePrivate(spec)
+    } catch (e: InvalidKeySpecException) {
+        null
+    }
+}
+
 public fun JsonWebKey.RSA.toJavaRSAPrivateKey(): RSAPrivateKey {
     if (!this.isValidPrivateKey) {
         throw UnsupportedKeyException("Not a valid RSA private key")
@@ -47,22 +56,32 @@ public fun JsonWebKey.RSA.toJavaRSAPrivateKey(): RSAPrivateKey {
     val otherPrimesInfo = this.otherPrimesInfo?.map {
         RSAOtherPrimeInfo(it.primeFactor.toUintBigInteger(), it.factorCRTExponent.toUintBigInteger(), it.factorCRTCoefficient.toUintBigInteger())
     }?.toTypedArray()
-    try {
-        val keySpec = if (firstPrimeFactor != null && secondPrimeFactor != null && firstFactorCRTExponent != null && secondFactorCRTExponent != null && firstCRTCoefficient != null) {
-            if (otherPrimesInfo.isNullOrEmpty()){
-                RSAPrivateCrtKeySpec(modulus, publicExponent, privateExponent, firstPrimeFactor, secondPrimeFactor, firstFactorCRTExponent, secondFactorCRTExponent, firstCRTCoefficient)
-            } else {
-                RSAMultiPrimePrivateCrtKeySpec(modulus, publicExponent, privateExponent, firstPrimeFactor, secondPrimeFactor, firstFactorCRTExponent, secondFactorCRTExponent, firstCRTCoefficient, otherPrimesInfo)
-            }
-        } else {
-            RSAPrivateKeySpec(modulus, privateExponent)
-        }
-        return KeyFactory.getInstance("RSA").generatePrivate(keySpec) as RSAPrivateKey
-    } catch (e: InvalidKeySpecException) {
-        throw UnsupportedKeyException(e.message ?: "InvalidKeySpecException", e)
+    val keyFactory = try {
+        KeyFactory.getInstance("RSA")
     } catch (e: NoSuchAlgorithmException) {
-        throw UnsupportedKeyException(e.message ?: "NoSuchAlgorithmException", e)
+        throw UnsupportedKeyException(e.message ?: "RSA algorithm not found in JVM", e)
     }
+    //try to generate the private key with fallback in the order of Multi-prime, CRT, modulus+privateExponent
+    //partly redundant as JVM may fall back internally as the first two share the common basic RSA interface
+    //i.e. if a JWK has Other Primes Info, we'll get a basic modulus+privateExponent version instead of CRT
+    var key: PrivateKey? = null
+    if (firstPrimeFactor != null && secondPrimeFactor != null && firstFactorCRTExponent != null && secondFactorCRTExponent != null && firstCRTCoefficient != null) {
+        if (!otherPrimesInfo.isNullOrEmpty()) {
+            key = keyFactory.tryPrivateKeySpec(RSAMultiPrimePrivateCrtKeySpec(modulus, publicExponent, privateExponent, firstPrimeFactor, secondPrimeFactor, firstFactorCRTExponent, secondFactorCRTExponent, firstCRTCoefficient, otherPrimesInfo))
+        }
+        if (key == null) {
+            key = keyFactory.tryPrivateKeySpec(RSAPrivateCrtKeySpec(modulus, publicExponent, privateExponent, firstPrimeFactor, secondPrimeFactor, firstFactorCRTExponent, secondFactorCRTExponent, firstCRTCoefficient))
+        }
+    }
+    if (key == null) {
+        //run the final fallback directly so we can wrap it's exception
+        key = try {
+            keyFactory.generatePrivate(RSAPrivateKeySpec(modulus, privateExponent))
+        } catch (e: InvalidKeySpecException) {
+            throw UnsupportedKeyException(e.message ?: "InvalidKeySpecException", e)
+        }
+    }
+    return key as RSAPrivateKey
 }
 
 private fun ByteArray.toUnsigned(): ByteArray {

@@ -5,7 +5,6 @@
 package io.ktor.jwt.algorithms
 
 import io.ktor.jwt.*
-import io.ktor.jwt.algorithms.*
 import java.security.*
 import java.security.interfaces.*
 import kotlin.test.*
