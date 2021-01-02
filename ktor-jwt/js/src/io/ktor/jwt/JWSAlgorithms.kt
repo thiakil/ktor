@@ -4,4 +4,4 @@
 
 package io.ktor.jwt
 
-internal actual val JWS_ALGORITHMS: Map<String, JwsAlgorithm> = error("TODO")
+internal actual val JWS_ALGORITHMS: Map<String, JwsAlgorithm> = emptyMap()

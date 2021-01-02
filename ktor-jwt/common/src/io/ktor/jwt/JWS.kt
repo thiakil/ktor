@@ -47,6 +47,16 @@ import kotlinx.serialization.json.*
  */
 public object JWS {
     /**
+     * Check if this platform supports this algorithm for signing and verifying
+     */
+    public fun supports(algorithm: String): Boolean {
+        return when(algorithm) {
+            "none" -> true
+            else -> JWS_ALGORITHMS.containsKey(algorithm)
+        }
+    }
+
+    /**
      * Verify the signature of a JWT using JWS
      * @throws UnsupportedJWAlgorithm When an algorithm is unknown or isn't supported by the underlying platform
      * @throws UnsupportedKeyException When a key is malformed or not applicable to the alorithm
