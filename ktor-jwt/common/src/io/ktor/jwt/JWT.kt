@@ -60,13 +60,13 @@ public object JWT {
         if (!parts[0].matches(base64UrlFormat)) throw JWSDecodeException("Header base64 invalid")
         if (!parts[1].matches(base64UrlFormat)) throw JWSDecodeException("Payload bas64 invalid")
         val header = try {
-            json.decodeFromString<JOSEHeader>(parts[0].decodeBase64UrlString())
+            json.decodeFromString<JOSEHeaderData>(parts[0].decodeBase64UrlString())
         } catch (e: Exception) {
-            throw JWSDecodeException("Header deserialisation failed", e)
+            throw JWSDecodeException("Header deserialisation failed: ${e.message}", e)
         }
         if (header.algorithm != "none" && parts.size != 3) throw JWSDecodeException("missing signature")
         val payloadRaw = json.parseToJsonElement(parts[1].decodeBase64UrlString())
-        val payload = json.decodeFromJsonElement<JWTClaimsSet>(payloadRaw)
+        val payload = json.decodeFromJsonElement<JWTClaimsSetData>(payloadRaw)
         val payloadUnknowns = payloadRaw.jsonObject.toMutableMap()
         knownClaims.forEach { payloadUnknowns.remove(it) }
         val signature = if (parts.size == 3 && parts[2] != "") parts[2].decodeBase64UrlBytes() else null
