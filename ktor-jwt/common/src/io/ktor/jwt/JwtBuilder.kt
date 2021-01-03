@@ -312,10 +312,6 @@ public suspend fun JWTPayload.sign(block: suspend JwtSignatureBuilder.()->Unit):
 }
 
 @JwtDSL
-public fun JWTPayload.signSync(block: suspend JwtSignatureBuilder.()->Unit): String {
-    val sig = JwtSignatureBuilder(this)
-    runBlocking {
-        sig.block()
-    }
-    return sig.build()
+public fun JWTPayload.signSync(block: JwtSignatureBuilder.()->Unit): String {
+    return JwtSignatureBuilder(this).apply(block).build()
 }

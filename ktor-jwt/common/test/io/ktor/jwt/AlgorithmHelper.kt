@@ -8,8 +8,11 @@ import kotlinx.coroutines.*
 import kotlin.test.*
 
 object AlgorithmHelper {
-    fun testSelfSignVerify(jwt: JWTPayload, algorithm: JwsAlgorithm, key: SigningKey) {
-        val signed = runBlocking { JWS.sign(jwt, algorithm, {key}) }
-        assertTrue(algorithm.verify(JWT.decode(signed).signature!!, key))
+    fun testSelfSignVerify(jwt: JWTPayload, algorithm: JwsAlgorithm, keyIn: SigningKey) {
+        val signed = jwt.signSync {
+            key = keyIn
+            alg = algorithm
+        }
+        assertTrue(algorithm.verify(JWT.decode(signed).signature!!, keyIn))
     }
 }
